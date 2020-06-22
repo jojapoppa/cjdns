@@ -2,8 +2,13 @@ CultureSpy worked out how to compile cjdns for Windows for Windows. So if you ha
 
 # Building cjdns On Windows For Windows
 
-
 Install Cygwin from [here](https://cygwin.com/install.html)
+The following command will cross compile to a 64 bit windows build from linux:
+
+SYSTEM=win64 CFLAGS="-std=c11" CROSS_COMPILE=x86_64-w64-mingw32- ./cross-do
+
+The following documentation is specific to 32bit builds...
+
 
 Extra packages to install, if they're not installed by default:
 

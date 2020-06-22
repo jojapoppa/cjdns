@@ -149,7 +149,7 @@ var mkBuilder = function (state) {
                 outputFile = cFile.replace(/^.*\/([^\/\.]*).*$/, function (a, b) { return b; });
             }
 
-            if (state.systemName === 'win32' && !(/\.exe$/.test(outputFile))) {
+            if ((state.systemName === 'win32' || (typeof __MINGW64__ !== 'undefined')) && !(/\.exe$/.test(outputFile))) {
                 outputFile += '.exe';
             }
 

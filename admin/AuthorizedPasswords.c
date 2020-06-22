@@ -66,7 +66,7 @@ static void add(Dict* args, void* vcontext, String* txid, struct Allocator* allo
     }
 }
 
-static void remove(Dict* args, void* vcontext, String* txid, struct Allocator* requestAlloc)
+static void removeAuth(Dict* args, void* vcontext, String* txid, struct Allocator* requestAlloc)
 {
     struct Context* context = Identity_check((struct Context*) vcontext);
     String* user = Dict_getStringC(args, "user");
@@ -113,7 +113,7 @@ void AuthorizedPasswords_init(struct Admin* admin,
             { .name = "ipv6", .required = 0, .type = "String" },
             { .name = "user", .required = 0, .type = "String" }
         }), admin);
-    Admin_registerFunction("AuthorizedPasswords_remove", remove, context, true,
+    Admin_registerFunction("AuthorizedPasswords_remove", removeAuth, context, true,
         ((struct Admin_FunctionArg[]){
             { .name = "user", .required = 1, .type = "String" }
         }), admin);
