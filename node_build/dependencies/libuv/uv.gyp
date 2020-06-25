@@ -123,7 +123,7 @@
           'cflags': [
             '-g',
             '--std=gnu89',
-            '-pedantic',
+            #'-pedantic',
             '-Wall',
             '-Wextra',
             '-Wno-unused-parameter',

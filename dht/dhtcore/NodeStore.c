@@ -455,8 +455,16 @@ static bool findBestParent(struct Node_Two* node, struct NodeStore_pvt* store)
     } while (ret);
     uint64_t time1 = Time_hrtime();
     if ((int64_t)(time1 - time0) > 1000000) {
-        Log_warn(store->logger, "\n\nfindBestParent() took [%lld] ms\n\n",
-            (long long) ((time1 - time0) / 1000000));
+        #ifdef win32
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wformat"
+            Log_warn(store->logger, "\n\nfindBestParent() took [%I64d] ms\n\n",
+                (long long) ((time1 - time0) / 1000000));
+            #pragma GCC diagnostic pop
+        #else
+            Log_warn(store->logger, "\n\nfindBestParent() took [%lld] ms\n\n",
+                (long long) ((time1 - time0) / 1000000));
+        #endif
     }
     return true;
 }
@@ -1767,7 +1775,17 @@ struct NodeList* NodeStore_getPeers(uint64_t label,
                                     struct NodeStore* nodeStore)
 {
     struct NodeStore_pvt* store = Identity_check((struct NodeStore_pvt*)nodeStore);
-    Log_debug(store->logger, "getPeers request for [%llx]", (unsigned long long) label);
+
+    #ifdef win32
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wformat"
+        Log_debug(store->logger, "getPeers request for [%I64u]", (unsigned long long) label);
+        #pragma GCC diagnostic pop
+    #else
+        Log_debug(store->logger, "getPeers request for [%llx]", (unsigned long long) label);
+    #endif
+
+
     // truncate the label to the part which this node uses PLUS
     // the self-interface bit for the next hop
     if (label > 1) {
@@ -2099,11 +2117,23 @@ void NodeStore_pathTimeout(struct NodeStore* nodeStore, uint64_t path)
     if (Defined(Log_DEBUG)) {
         uint8_t addr[60];
         Address_print(addr, &node->address);
-        Log_debug(store->logger,
+
+        #ifdef win32
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wformat"
+            Log_debug(store->logger,
+                  "Ping timeout for %s. changing cost from %I64u to %I64u\n",
+                  addr,
+                  (unsigned long long)oldCost,
+                  (unsigned long long)Node_getCost(node));
+            #pragma GCC diagnostic pop
+        #else
+            Log_debug(store->logger,
                   "Ping timeout for %s. changing cost from %llu to %llu\n",
                   addr,
                   (unsigned long long)oldCost,
                   (unsigned long long)Node_getCost(node));
+        #endif
     }
 }
 

@@ -91,9 +91,20 @@ static int handleIncoming(struct DHTMessage* message, void* vcontext)
         return -1;
     }
     if (*encIdx < 0 || *encIdx >= scheme->count) {
+
+#ifdef win32
+ #pragma GCC diagnostic push
+ #pragma GCC diagnostic ignored "-Wformat"
+        Log_debug(ctx->logger, "Invalid encoding index [%I64d], version [%d]",
+                  (long long int) (*encIdx),
+                  (int) (*version));
+ #pragma GCC diagnostic pop
+#else
         Log_debug(ctx->logger, "Invalid encoding index [%lld], version [%d]",
                   (long long int) (*encIdx),
                   (int) (*version));
+#endif
+
         Assert_ifTesting(0);
         return -1;
     }

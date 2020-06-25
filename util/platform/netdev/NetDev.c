@@ -24,7 +24,8 @@ static Er_DEFUN(void checkAddressAndPrefix(struct Sockaddr* sa,
                                   int* addrFam,
                                   char** printedAddr,
                                   void** addr,
-                                  struct Allocator* alloc))
+                                  struct Allocator* alloc,
+                                  struct Except* eh))
 {
     *printedAddr = Sockaddr_print(sa, alloc);
     *addrFam = Sockaddr_getFamily(sa);
@@ -46,37 +47,52 @@ static Er_DEFUN(void checkAddressAndPrefix(struct Sockaddr* sa,
     Er_ret();
 }
 
-Er_DEFUN(void NetDev_addAddress(const char* ifName,
+void NetDev_addAddress(const char* ifName,
                        struct Sockaddr* sa,
                        struct Log* logger,
-                       struct Allocator* alloc))
+                       struct Except* eh)
 {
     int addrFam;
     char* printedAddr;
     void* addr;
+    struct Allocator* alloc;
+    BufferAllocator_STACK(alloc, 4096);
 
-    Er(checkAddressAndPrefix(sa, &addrFam, &printedAddr, &addr, alloc));
+    struct Er_Ret* er = NULL;
+    Er_check(&er, checkAddressAndPrefix(sa, &addrFam, &printedAddr, &addr, alloc, eh));
+    if (er) {
+        Log_error(logger, er->message);
+    }
 
     Log_info(logger, "Setting IP address [%s] on interface [%s]",
              printedAddr, ifName);
 
-    Er(NetPlatform_addAddress(ifName, addr, sa->prefix, addrFam, logger, alloc));
-    Er_ret();
+    Er_check(&er, NetPlatform_addAddress(ifName, addr, sa->prefix, addrFam, logger, alloc));
+    if (er) {
+        Log_error(logger, er->message);
+    }
 }
 
-Er_DEFUN(void NetDev_setMTU(const char* interfaceName,
+void NetDev_setMTU(const char* interfaceName,
                    uint32_t mtu,
                    struct Log* logger,
-                   struct Allocator* alloc))
+                   struct Except* eh)
 {
-     Er(NetPlatform_setMTU(interfaceName, mtu, logger, alloc));
-     Er_ret();
+    struct Allocator* alloc;
+    BufferAllocator_STACK(alloc, 4096);
+
+    struct Er_Ret* er = NULL;
+    Er_check(&er, NetPlatform_setMTU(interfaceName, mtu, logger, alloc));
+    if (er) {
+        Log_error(logger, er->message);
+    }
 }
 
-Er_DEFUN(void NetDev_flushAddresses(const char* deviceName, struct Allocator* alloc))
+Er_DEFUN(void NetDev_flushAddresses(const char* deviceName,
+    struct Allocator* alloc, struct Except* eh))
 {
     #ifdef win32
-        Er(NetPlatform_flushAddresses(deviceName, alloc));
+        NetPlatform_flushAddresses(deviceName, alloc, eh);
     #endif
     Er_ret();
 }
@@ -105,14 +121,15 @@ Er_DEFUN(void NetDev_setRoutes(const char* ifName,
                       struct Sockaddr** prefixSet,
                       int prefixCount,
                       struct Log* logger,
-                      struct Allocator* tempAlloc))
+                      struct Allocator* tempAlloc,
+                      struct Except* eh))
 {
     for (int i = 0; i < prefixCount; i++) {
         struct Allocator* alloc = Allocator_child(tempAlloc);
         int addrFam;
         char* printedAddr;
         void* addr;
-        Er(checkAddressAndPrefix(prefixSet[i], &addrFam, &printedAddr, &addr, alloc));
+        Er(checkAddressAndPrefix(prefixSet[i], &addrFam, &printedAddr, &addr, alloc, eh));
         Allocator_free(alloc);
     }
 

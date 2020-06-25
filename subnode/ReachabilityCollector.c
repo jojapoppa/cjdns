@@ -171,7 +171,15 @@ static void latencyUpdate(
     struct PeerInfo_pvt* pip,
     uint32_t lag)
 {
-    Log_debug(rcp->log, "Latency update for [%" PRIx64 "] [%u]ms", pip->pub.addr.path, lag);
+    #ifdef win32
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wformat"
+        Log_debug(rcp->log, "Latency update for [%I64d] [%u]ms", pip->pub.addr.path, lag);
+        #pragma GCC diagnostic pop
+    #else
+        Log_debug(rcp->log, "Latency update for [%" PRIx64 "] [%u]ms", pip->pub.addr.path, lag);
+    #endif
+
     pip->sumOfLag += lag;
     pip->lagSamples++;
     pip->timeOfLastLagUpdate = Time_currentTimeMilliseconds(rcp->base);
@@ -301,10 +309,29 @@ static void cycle(void* vrc)
 
     for (int j = 0; j < rcp->piList->length; j++) {
         struct PeerInfo_pvt* pi = ArrayList_OfPeerInfo_pvt_get(rcp->piList, j);
-        Log_debug(rcp->log, "Visiting peer [%" PRIx64 "] samples [%u]",
-            pi->pub.addr.path, pi->lagSamples);
+
+        #ifdef win32
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wformat"
+            Log_debug(rcp->log, "Visiting peer [%I64d] samples [%u]",
+                pi->pub.addr.path, pi->lagSamples);
+            #pragma GCC diagnostic pop
+        #else
+             Log_debug(rcp->log, "Visiting peer [%" PRIx64 "] samples [%u]",
+                pi->pub.addr.path, pi->lagSamples);
+        #endif
+
         if (pi->lagSamples == 0) {
-            Log_debug(rcp->log, "Triggering a ping to peer [%" PRIx64 "]", pi->pub.addr.path);
+
+            #ifdef win32
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wformat"
+                Log_debug(rcp->log, "Triggering a ping to peer [%I64d]", pi->pub.addr.path);
+                #pragma GCC diagnostic pop
+            #else
+                Log_debug(rcp->log, "Triggering a ping to peer [%" PRIx64 "]", pi->pub.addr.path);
+            #endif
+
             queryPeer(rcp, pi);
         }
 

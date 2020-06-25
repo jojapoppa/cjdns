@@ -3,6 +3,11 @@
 #include "crypto_secretbox.h"
 #include "randombytes.h"
 
+#ifdef win32
+#define random rand
+#define srandom srand
+#endif
+
 unsigned char k[crypto_secretbox_KEYBYTES];
 unsigned char n[crypto_secretbox_NONCEBYTES];
 unsigned char m[10000];

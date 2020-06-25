@@ -70,7 +70,16 @@ static void timeoutCallback(void* vping)
     int64_t now = Time_currentTimeMilliseconds(p->pinger->eventBase);
     long long diff = ((long long) now) - ((long long)p->timeSent);
     Assert_true(diff < 1000000000);
-    Log_debug(p->pinger->logger, "Ping timeout for [%u] in [%lld] ms", p->pub.handle, diff);
+
+    #ifdef win32
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wformat"
+        Log_debug(p->pinger->logger, "Ping timeout for [%u] in [%I64d] ms", p->pub.handle, diff);
+        #pragma GCC diagnostic pop
+    #else
+        Log_debug(p->pinger->logger, "Ping timeout for [%u] in [%lld] ms", p->pub.handle, diff);
+    #endif
+
     callback(NULL, p);
 }
 

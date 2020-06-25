@@ -3,6 +3,11 @@
 #include "crypto_auth_hmacsha512256.h"
 #include "randombytes.h"
 
+#ifdef win32
+#define random rand
+#define srandom srand
+#endif
+
 unsigned char key[32];
 unsigned char c[10000];
 unsigned char a[32];

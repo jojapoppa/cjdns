@@ -20,6 +20,7 @@
 #include "benc/serialization/standard/BencMessageReader.h"
 #include "crypto/AddressCalc.h"
 #include "crypto/random/Random.h"
+#include "exception/Jmp.h"
 #include "interface/tuntap/TUNMessageType.h"
 #include "memory/Allocator.h"
 #include "tunnel/IpTunnel.h"
@@ -425,10 +426,11 @@ static void addAddress(char* printedAddr, uint8_t prefixLen,
     ss.addr.flags |= Sockaddr_flags_PREFIX;
 
     ss.addr.prefix = allocSize;
-    struct Er_Ret* er = NULL;
-    Er_check(&er, NetDev_addAddress(tunName->bytes, &ss.addr, ctx->logger, tempAlloc));
-    if (er) {
-        Log_error(ctx->logger, "Error setting ip address on TUN [%s]", er->message);
+    struct Jmp j;
+    Jmp_try(j) {
+        NetDev_addAddress(tunName->bytes, &ss.addr, ctx->logger, &j.handler);
+    } Jmp_catch {
+        Log_error(ctx->logger, "Error setting ip address on TUN [%s]", j.message);
         return;
     }
 
@@ -556,10 +558,14 @@ static Iface_DEFUN incomingAddresses(Dict* d,
             Log_error(context->logger, "Failed to set routes because TUN interface is not setup");
             return 0;
         }
-        struct Er_Ret* er = NULL;
-        Er_check(&er, RouteGen_commit(context->rg, tunName->bytes, alloc));
-        if (er) {
-            Log_error(context->logger, "Error setting routes for TUN [%s]", er->message);
+        struct Jmp j;
+        Jmp_try(j) {
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wunused-result"
+            RouteGen_commit(context->rg, tunName->bytes, alloc,  &j.handler);
+            #pragma GCC diagnostic pop
+        } Jmp_catch {
+            Log_error(context->logger, "Error setting routes for TUN [%s]", j.message);
             return 0;
         }
     }
@@ -605,6 +611,13 @@ static Iface_DEFUN incomingControlMessage(struct Message* message,
     return 0;
 }
 
+#if defined(win32)
+#define GET64(buffer) ({ \
+    uint64_t x = (uint64_t) (((uint32_t*)(buffer))[0]); \
+    x |= (( (uint64_t) ((uint32_t*)(buffer))[1]) << 32); \
+    Endian_bigEndianToHost64(x); \
+  })
+#else
 #define GET64(buffer) \
     (__extension__ ({                                               \
         Assert_true(!((long)(buffer) % 4));                         \
@@ -612,13 +625,21 @@ static Iface_DEFUN incomingControlMessage(struct Message* message,
         x |= (( (uint64_t) ((uint32_t*)(buffer))[1]) << 32);        \
         Endian_bigEndianToHost64(x);                                \
     }))
+#endif
 
+#if defined(win32)
+#define GET32(buffer) ({ \
+    uint32_t x = (((uint32_t*)(buffer))[0]); \
+    Endian_bigEndianToHost32(x); \
+  })
+#else
 #define GET32(buffer) \
     (__extension__ ({                                               \
         Assert_true(!((long)(buffer) % 4));                         \
         uint32_t x = (((uint32_t*)(buffer))[0]);                    \
         Endian_bigEndianToHost32(x);                                \
     }))
+#endif
 
 static bool prefixMatches6(uint8_t* addressA, uint8_t* refAddr, uint8_t prefixLen)
 {
@@ -627,6 +648,12 @@ static bool prefixMatches6(uint8_t* addressA, uint8_t* refAddr, uint8_t prefixLe
         return false;
     }
     Assert_true(prefixLen && prefixLen <= 128);
+
+#if defined(win32)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
     uint64_t a0 = GET64(addressA);
     uint64_t b0 = GET64(refAddr);
     if (prefixLen <= 64) {
@@ -634,6 +661,11 @@ static bool prefixMatches6(uint8_t* addressA, uint8_t* refAddr, uint8_t prefixLe
     }
     uint64_t a1 = GET64(addressA + 8);
     uint64_t b1 = GET64(refAddr + 8);
+
+#if defined(win32)
+#pragma GCC diagnostic pop
+#endif
+
     return !( (a0 ^ b0) | ((a1 ^ b1) >> (128 - prefixLen)) );
 }
 
@@ -644,8 +676,19 @@ static bool prefixMatches4(uint8_t* addressA, uint8_t* refAddr, uint32_t prefixL
         return false;
     }
     Assert_true(prefixLen && prefixLen <= 32);
+
+#if defined(win32)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
     uint32_t a = GET32(addressA);
     uint32_t b = GET32(refAddr);
+
+#if defined(win32)
+#pragma GCC diagnostic pop
+#endif
+
     return !((a ^ b) >> (32 - prefixLen));
 }
 

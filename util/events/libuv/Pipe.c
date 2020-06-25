@@ -99,7 +99,11 @@ static void sendMessage2(struct Pipe_WriteRequest_pvt* req)
     if (pipe->ipc && m->associatedFd) {
         int fd = Message_getAssociatedFd(m);
         uv_stream_t* fake_handle = Allocator_calloc(req->alloc, sizeof(uv_stream_t), 1);
+
+#ifndef win32
         fake_handle->io_watcher.fd = fd;
+#endif
+
         fake_handle->type = UV_TCP;
         ret = uv_write2(
             &req->uvReq,
@@ -384,11 +388,13 @@ Er_DEFUN(struct Pipe* Pipe_named(const char* fullPath,
     req->data = out;
     uv_pipe_connect(req, &out->peer, out->pub.fullName, connected);
 
+#ifndef win32
     int err = (&out->peer)->delayed_error;
     if (err != 0) {
         Er_raise(out->alloc, "uv_pipe_connect() failed [%s] for pipe [%s]",
                      uv_strerror(err), out->pub.fullName);
     }
+#endif
 
     Er_ret(&out->pub);
 }
@@ -419,6 +425,10 @@ Er_DEFUN(bool Pipe_exists(const char* path, struct Allocator* errAlloc))
         if (errno == ENOENT) { Er_ret(false); }
         Er_raise(errAlloc, "Failed stat(%s) [%s]", path, strerror(errno));
     } else {
+#ifndef win32
         Er_ret((st.st_mode & S_IFMT) == S_IFSOCK);
+#else
+        Er_ret(false);
+#endif
     }
 }

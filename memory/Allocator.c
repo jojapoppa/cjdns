@@ -589,7 +589,7 @@ void* Allocator__realloc(struct Allocator* allocator,
     }
 
     size_t realSize = getRealSize(size);
-    if (context->rootAlloc->spaceAvailable + origLoc->pub.size < realSize) {
+    if (context->rootAlloc->spaceAvailable + origLoc->pub.size < (int64_t)realSize) {
         failure(context, "Out of memory, limit exceeded.", fileName, lineNum);
     }
     context->rootAlloc->spaceAvailable += origLoc->pub.size;

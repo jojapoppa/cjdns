@@ -40,7 +40,14 @@ int main()
         long long num = Random_int64(rand);
         Er_assert(Base10_write(msg, num));
 
+#ifndef win32
         snprintf(buff, 31, "%lld", num);
+#else
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wformat"
+        snprintf(buff, 31, "%I64d", num);
+        #pragma GCC diagnostic pop
+#endif
 
         Assert_true(msg->length == (int)CString_strlen(buff));
         Assert_true(!Bits_memcmp(msg->bytes, buff, msg->length));

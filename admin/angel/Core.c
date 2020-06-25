@@ -30,6 +30,7 @@
 #ifndef SUBNODE
 #include "dht/Pathfinder.h"
 #endif
+#include "exception/Jmp.h"
 #include "exception/Er.h"
 #include "interface/Iface.h"
 #include "util/events/UDPAddrIface.h"
@@ -79,6 +80,10 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+
+#if defined(win32)
+#include <windows.h>
+#endif
 
 // Failsafe: abort if more than 2^23 bytes are allocated (8MB)
 #define ALLOCATOR_FAILSAFE (1<<23)
@@ -131,7 +136,7 @@ struct Context
     Identity
 };
 
-static void shutdown(void* vcontext)
+static void shutdownCore(void* vcontext)
 {
     struct Context* context = Identity_check((struct Context*) vcontext);
     Allocator_free(context->alloc);
@@ -143,7 +148,7 @@ static void adminExit(Dict* input, void* vcontext, String* txid, struct Allocato
     Log_info(context->logger, "Got request to exit");
     Dict d = Dict_CONST(String_CONST("error"), String_OBJ(String_CONST("none")), NULL);
     Admin_sendMessage(&d, txid, context->admin);
-    Timeout_setTimeout(shutdown, context, 1, context->base, context->alloc);
+    Timeout_setTimeout(shutdownCore, context, 1, context->base, context->alloc);
 }
 
 static void sendResponse(String* error,
@@ -183,10 +188,14 @@ static Er_DEFUN(void initSocket2(String* socketFullPath,
     Er_ret();
 }
 
-static Er_DEFUN(void initTunnel2(String* desiredDeviceName,
+void Core_initTunnel2(String* desiredDeviceName,
                         struct Context* ctx,
                         uint8_t addressPrefix,
-                        struct Allocator* errAlloc))
+                        struct Except* eh);
+void Core_initTunnel2(String* desiredDeviceName,
+                        struct Context* ctx,
+                        uint8_t addressPrefix,
+                        struct Except* eh)
 {
     Log_debug(ctx->logger, "Initializing TUN device [%s]",
               (desiredDeviceName) ? desiredDeviceName->bytes : "<auto>");
@@ -200,8 +209,8 @@ static Er_DEFUN(void initTunnel2(String* desiredDeviceName,
         ctx->tunDevice = NULL;
     }
     ctx->tunAlloc = Allocator_child(ctx->alloc);
-    ctx->tunDevice = Er(TUNInterface_new(
-        desiredName, assignedTunName, 0, ctx->base, ctx->logger, ctx->tunAlloc));
+    ctx->tunDevice = Er_assert(TUNInterface_new(
+        desiredName, assignedTunName, 0, ctx->base, ctx->logger, eh, ctx->tunAlloc));
 
     Iface_plumb(ctx->tunDevice, &ctx->nc->tunAdapt->tunIf);
 
@@ -211,9 +220,8 @@ static Er_DEFUN(void initTunnel2(String* desiredDeviceName,
         Sockaddr_fromBytes(ctx->nc->myAddress->ip6.bytes, Sockaddr_AF_INET6, ctx->tunAlloc);
     myAddr->prefix = addressPrefix;
     myAddr->flags |= Sockaddr_flags_PREFIX;
-    Er(NetDev_addAddress(assignedTunName, myAddr, ctx->logger, errAlloc));
-    Er(NetDev_setMTU(assignedTunName, DEFAULT_MTU, ctx->logger, errAlloc));
-    Er_ret();
+    NetDev_addAddress(assignedTunName, myAddr, ctx->logger, eh);
+    NetDev_setMTU(assignedTunName, DEFAULT_MTU, ctx->logger, eh);
 }
 
 static void initTunfd(Dict* args, void* vcontext, String* txid, struct Allocator* requestAlloc)
@@ -281,11 +289,13 @@ static void stopTun(Dict* args, void* vcontext, String* txid, struct Allocator* 
 static void initTunnel(Dict* args, void* vcontext, String* txid, struct Allocator* requestAlloc)
 {
     struct Context* const ctx = Identity_check((struct Context*) vcontext);
-    String* desiredName = Dict_getStringC(args, "desiredTunName");
-    struct Er_Ret* er = NULL;
-    Er_check(&er, initTunnel2(desiredName, ctx, AddressCalc_ADDRESS_PREFIX_BITS, requestAlloc));
-    if (er) {
-        String* error = String_printf(requestAlloc, "Failed to configure tunnel [%s]", er->message);
+
+    struct Jmp jmp;
+    Jmp_try(jmp) {
+        String* desiredName = Dict_getStringC(args, "desiredTunName");
+        Core_initTunnel2(desiredName, ctx, AddressCalc_ADDRESS_PREFIX_BITS, &jmp.handler);
+    } Jmp_catch {
+        String* error = String_printf(requestAlloc, "Failed to configure tunnel [%s]", jmp.message);
         sendResponse(error, ctx->admin, txid, requestAlloc);
         return;
     }

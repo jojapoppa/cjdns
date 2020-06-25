@@ -36,8 +36,9 @@ void RouteGen_addPrefix(struct RouteGen* rg, struct Sockaddr* destination);
 void RouteGen_addLocalPrefix(struct RouteGen* rg, struct Sockaddr* destination);
 
 Er_DEFUN(void RouteGen_commit(struct RouteGen* rg,
-                              const char* tunName,
-                              struct Allocator* tempAlloc));
+                     const char* tunName,
+                     struct Allocator* tempAlloc,
+                     struct Except* eh));
 
 Dict* RouteGen_getPrefixes(struct RouteGen* rg, struct Allocator* alloc);
 

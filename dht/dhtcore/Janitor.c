@@ -127,8 +127,18 @@ static void blacklist(struct Janitor_pvt* j, uint64_t path)
             oldestTime = qp->timeAdded;
         }
     }
+
+#ifdef win32
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wformat"
+    Log_debug(j->logger, "Replacing [%I64d]ms old blacklist node because blacklist is full",
+        (long long)(now - oldestTime));
+    #pragma GCC diagnostic pop
+#else
     Log_debug(j->logger, "Replacing [%lld]ms old blacklist node because blacklist is full",
         (long long)(now - oldestTime));
+#endif
+
     j->blacklist[oldestIndex].timeAdded = now;
     j->blacklist[oldestIndex].path = path;
 }

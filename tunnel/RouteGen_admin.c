@@ -181,7 +181,7 @@ static void commit(Dict* args,
     const char* error = "none";
 
     struct Er_Ret* er = NULL;
-    Er_check(&er, RouteGen_commit(ctx->rg, tunName->bytes, requestAlloc));
+    Er_check(&er, RouteGen_commit(ctx->rg, tunName->bytes, requestAlloc, NULL));
     if (er) {
         error = er->message;
     }

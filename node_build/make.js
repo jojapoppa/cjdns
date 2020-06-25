@@ -105,7 +105,9 @@ Builder.configure({
         }
     }
 
-    if (builder.config.systemName === 'win32') {
+    console.log('builder.config.systemName: '+builder.config.systemName);
+
+    if (builder.config.systemName === 'win32' || builder.config.systemName === 'win64') {
         builder.config.cflags.push('-Wno-format');
     } else if (builder.config.systemName === 'linux') {
         builder.config.ldflags.push('-Wl,-z,relro,-z,now,-z,noexecstack');
@@ -115,7 +117,7 @@ Builder.configure({
     }
 
     if (process.env['NO_PIE'] === undefined && builder.config.systemName !== 'freebsd'
-        && builder.config.systemName !== 'win32')
+        && builder.config.systemName !== 'win32' && builder.config.systemName !== 'win64')
     {
         builder.config.cflags.push('-fPIE');
 
@@ -214,7 +216,7 @@ Builder.configure({
     }
     if (libssp === false) {
         console.log("Stack Smashing Protection (security feature) is disabled");
-    } else if (builder.config.systemName == 'win32') {
+    } else if (builder.config.systemName == 'win32' || builder.config.systemName == 'win64') {
         builder.config.libs.push('-lssp');
     } else if ((!uclibc && builder.config.systemName !== 'sunos') || libssp === true) {
         builder.config.cflags.push(
@@ -248,7 +250,7 @@ Builder.configure({
 
     var dependencyDir = builder.config.buildDir + '/dependencies';
     var libuvLib = dependencyDir + '/libuv/out/Release/libuv.a';
-    if (['win32', 'netbsd'].indexOf(builder.config.systemName) >= 0) {//this might be needed for other BSDs
+    if (['win32', 'win64', 'netbsd'].indexOf(builder.config.systemName) >= 0) {//this might be needed for other BSDs
         libuvLib = dependencyDir + '/libuv/out/Release/obj.target/libuv.a';
     }
 
@@ -279,7 +281,7 @@ Builder.configure({
 
             var NaCl = require(process.cwd() + '/node_build/make.js');
             NaCl.build(function (args, callback) {
-                if (builder.config.systemName !== 'win32') {
+                if (builder.config.systemName !== 'win32' && builder.config.systemName !== 'win64') {
                     args.unshift('-fPIC');
                 }
 
@@ -314,7 +316,7 @@ Builder.configure({
             builder.config.libs.push('-lpthread');
         }
 
-        if (builder.config.systemName === 'win32') {
+        if (builder.config.systemName === 'win32' || builder.config.systemName === 'win64') {
             builder.config.libs.push(
                 '-lws2_32',
                 '-lpsapi',   // GetProcessMemoryInfo()
@@ -375,7 +377,7 @@ Builder.configure({
                 args.push('--format=make-linux')
             }
 
-            if (builder.config.systemName === 'win32') {
+            if (builder.config.systemName === 'win32' || builder.config.systemName === 'win64') {
                 args.push('-DOS=win');
             }
 
@@ -408,7 +410,7 @@ Builder.configure({
                     cflags.push('-D_FORTIFY_SOURCE=2');
                 }
 
-                if (!(/darwin|win32/i.test(builder.config.systemName))) {
+                if (!(/darwin|win32|win64/i.test(builder.config.systemName))) {
                     cflags.push('-fPIC');
                 }
                 args.push('CFLAGS=' + cflags.join(' '));

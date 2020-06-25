@@ -636,8 +636,9 @@ Dict* RouteGen_getGeneratedRoutes(struct RouteGen* rg, struct Allocator* alloc)
 }
 
 Er_DEFUN(void RouteGen_commit(struct RouteGen* rg,
-                              const char* tunName,
-                              struct Allocator* tempAlloc))
+                     const char* tunName,
+                     struct Allocator* tempAlloc,
+                     struct Except* eh))
 {
     struct RouteGen_pvt* rp = Identity_check((struct RouteGen_pvt*) rg);
     struct Prefix46* p46 = getGeneratedRoutes(rp, tempAlloc);
@@ -653,7 +654,7 @@ Er_DEFUN(void RouteGen_commit(struct RouteGen* rg,
         prefixSet[prefixNum++] = sockaddrForPrefix6(tempAlloc, pfx6);
     }
     Assert_true(prefixNum == p46->prefix4->length + p46->prefix6->length);
-    Er(NetDev_setRoutes(tunName, prefixSet, prefixNum, rp->log, tempAlloc));
+    Er(NetDev_setRoutes(tunName, prefixSet, prefixNum, rp->log, tempAlloc, eh));
     rp->pub.hasUncommittedChanges = false;
     Er_ret();
 }

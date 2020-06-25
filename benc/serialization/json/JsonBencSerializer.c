@@ -170,7 +170,14 @@ static int32_t serializeint64_t(struct Writer* writer,
     char buffer[32];
     Bits_memset(buffer, 0, 32);
 
+#ifndef win32
     snprintf(buffer, 32, "%" PRId64, integer);
+#else
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wformat"
+    snprintf(buffer, 32, "%I64d", integer);
+    #pragma GCC diagnostic pop
+#endif
 
     return Writer_write(writer, buffer, CString_strlen(buffer));
 }

@@ -20,6 +20,7 @@
 #include "memory/Allocator.h"
 #include "util/events/EventBase.h"
 #include "util/log/Log.h"
+#include "exception/Except.h"
 #include "util/Linker.h"
 Linker_require("interface/tuntap/TUNInterface_" + builder.config.systemName + ".c");
 
@@ -51,5 +52,6 @@ Er_DEFUN(struct Iface* TUNInterface_new(const char* interfaceName,
                                    int isTapMode,
                                    struct EventBase* base,
                                    struct Log* logger,
+                                   struct Except* eh,
                                    struct Allocator* alloc));
 #endif

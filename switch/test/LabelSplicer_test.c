@@ -33,8 +33,17 @@ static void splice()
 
     uint64_t out = LabelSplicer_splice(goHere, viaHere);
 
-    printf("Splicing %" PRIu64 " with %" PRIu64 " yields %" PRIu64 ", expecting %" PRIu64 "\n",
-           goHere, viaHere, out, expected);
+#ifndef win32
+        printf("Splicing %" PRIu64 " with %" PRIu64 " yields %" PRIu64 ", expecting %" PRIu64 "\n",
+            goHere, viaHere, out, expected);
+#else
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wformat"
+
+        printf("Splicing %I64d with %I64d yields %I64d, expecting %I64d\n",
+            goHere, viaHere, out, expected);
+        #pragma GCC diagnostic pop
+#endif
 
     Assert_true(expected == out);
 }

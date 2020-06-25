@@ -36,13 +36,15 @@ int main(int argc, char** argv)
     struct Sockaddr* addrC = Sockaddr_fromBytes(TUNTools_testIP6AddrC, Sockaddr_AF_INET6, alloc);
 
     char assignedIfName[TUNInterface_IFNAMSIZ];
-    struct Iface* tun = Er_assert(TUNInterface_new(NULL, assignedIfName, 0, base, logger, alloc));
+    struct Iface* tun = Er_assert(TUNInterface_new(NULL, assignedIfName, 0,
+        base, logger, NULL, alloc));
     addrA->flags |= Sockaddr_flags_PREFIX;
     addrA->prefix = 126;
-    Er_assert(NetDev_addAddress(assignedIfName, addrA, logger, alloc));
+    NetDev_addAddress(assignedIfName, addrA, logger, NULL);
     addrC->flags |= Sockaddr_flags_PREFIX;
     addrC->prefix = 125;
-    Er_assert(NetDev_setRoutes(assignedIfName, ((struct Sockaddr*[]) { addrC }), 1, logger, alloc));
+    Er_assert(NetDev_setRoutes(assignedIfName, ((struct Sockaddr*[]) { addrC }),
+        1, logger, alloc, NULL));
 
     TUNTools_echoTest(addrA, addrC, TUNTools_genericIP6Echo, tun, base, logger, alloc);
     Allocator_free(alloc);

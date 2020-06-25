@@ -96,10 +96,11 @@
    } while(0)
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
-  do {                                                                      \
-    *(uint64_t*) (filetime_ptr) = ((int64_t) (time) * 10000000LL) +         \
-                                  116444736000000000ULL;                    \
-  } while(0)
+  *(uint64_t*) (filetime_ptr) = ((int64_t) (time) * 10000000LL) + 116444736000000000ULL;
+//  do {                                                                      \
+//    *(uint64_t*) (filetime_ptr) = ((int64_t) (time) * 10000000LL) +         \
+//                                  116444736000000000ULL;                    \
+//  } while(0)
 
 #define IS_SLASH(c) ((c) == L'\\' || (c) == L'/')
 #define IS_LETTER(c) (((c) >= L'a' && (c) <= L'z') || \
@@ -1184,8 +1185,11 @@ static void fs__fchmod(uv_fs_t* req) {
 INLINE static int fs__utime_handle(HANDLE handle, double atime, double mtime) {
   FILETIME filetime_a, filetime_m;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
   TIME_T_TO_FILETIME((time_t) atime, &filetime_a);
   TIME_T_TO_FILETIME((time_t) mtime, &filetime_m);
+#pragma GCC diagnostic pop
 
   if (!SetFileTime(handle, NULL, &filetime_a, &filetime_m)) {
     return -1;

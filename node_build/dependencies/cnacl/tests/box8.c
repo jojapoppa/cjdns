@@ -3,6 +3,11 @@
 #include "crypto_box.h"
 #include "randombytes.h"
 
+#ifdef win32
+#define random rand
+#define srandom srand
+#endif
+
 unsigned char alicesk[crypto_box_SECRETKEYBYTES];
 unsigned char alicepk[crypto_box_PUBLICKEYBYTES];
 unsigned char bobsk[crypto_box_SECRETKEYBYTES];

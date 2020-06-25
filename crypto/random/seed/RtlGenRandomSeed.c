@@ -36,7 +36,11 @@ static int get(struct RandomSeed* rand, uint64_t buff[8])
 static void init()
 {
     HMODULE hLib = LoadLibrary("advapi32.dll");
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
     RtlGenRandom = (BOOLEAN (APIENTRY *)(void*,ULONG))GetProcAddress(hLib,"SystemFunction036");
+#pragma GCC diagnostic pop
 }
 
 struct RandomSeed* RtlGenRandomSeed_new(struct Allocator* alloc)

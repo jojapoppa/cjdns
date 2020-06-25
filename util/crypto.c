@@ -13,7 +13,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-W"
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-const-variable"

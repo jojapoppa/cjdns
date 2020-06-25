@@ -41,7 +41,15 @@ int main()
 
     uint64_t x;
     Random_bytes(rand, (uint8_t*) &x, 8);
+
+#ifndef win32
     printf("x = 0x%016" PRIx64 "\n", x);
+#else
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wformat"
+    printf("x = 0x%I64d\n", x);
+    #pragma GCC diagnostic pop
+#endif
 
     Assert_true(Bits_bitReverse64(Bits_bitReverse64(x)) == x);
     Assert_true(

@@ -580,6 +580,19 @@ static void onReply(Dict* msg, struct Address* src, struct MsgCore_Promise* prom
     int64_t now = rap->timeOfLastReply = ourTime(rap);
 
     int64_t oldClockSkew = rap->clockSkew;
+
+#ifdef win32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
+    Log_debug(rap->log, "sentTime [%I64d]", (long long int) sentTime);
+    Log_debug(rap->log, "snodeRecvTime [%I64d]", (long long int) *snodeRecvTime);
+    Log_debug(rap->log, "now [%I64d]", (long long int) now);
+    Log_debug(rap->log, "oldClockSkew [%I64d]", (long long int) oldClockSkew);
+    rap->clockSkew = estimateImprovedClockSkew(sentTime, *snodeRecvTime, now, oldClockSkew);
+    Log_debug(rap->log, "Adjusting clock skew by [%I64d]",
+        (long long int) (rap->clockSkew - oldClockSkew));
+#pragma GCC diagnostic pop
+#else
     Log_debug(rap->log, "sentTime [%lld]", (long long int) sentTime);
     Log_debug(rap->log, "snodeRecvTime [%lld]", (long long int) *snodeRecvTime);
     Log_debug(rap->log, "now [%lld]", (long long int) now);
@@ -587,6 +600,7 @@ static void onReply(Dict* msg, struct Address* src, struct MsgCore_Promise* prom
     rap->clockSkew = estimateImprovedClockSkew(sentTime, *snodeRecvTime, now, oldClockSkew);
     Log_debug(rap->log, "Adjusting clock skew by [%lld]",
         (long long int) (rap->clockSkew - oldClockSkew));
+#endif
 
     // We reset the state to NORMAL unless the synchronization of state took more space than
     // the last message could hold, however if the state was MSGFULL but then another message
@@ -733,9 +747,18 @@ static void onSnodeChange(struct SupernodeHunter* sh,
             Log_debug(rap->log, "Change Supernode [%s] -> [%s]", oldSnode, newSnode);
         }
     } else if (clockSkewDiff > 5000) {
+#ifdef win32
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
+        Log_debug(rap->log,
+            "Change Supernode (no change but clock skew diff [%I64d] > 5000ms)",
+            clockSkewDiff);
+#pragma GCC diagnostic pop
+#else
         Log_debug(rap->log,
             "Change Supernode (no change but clock skew diff [%" PRIu64 "] > 5000ms)",
             clockSkewDiff);
+#endif
     } else if (rap->snode.path == sh->snodeAddr.path) {
         Log_debug(rap->log, "Change Supernode (not really, false call)");
         return;

@@ -58,8 +58,16 @@ struct Allocator_Allocation_pvt {
     long lineNum;
     const char* fileName;
 };
+
+#if defined(win32)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 Assert_compileTime(sizeof(struct Allocator_Allocation_pvt) == Allocator_Allocation_pvt_SIZE);
 Assert_compileTime(!(Allocator_Allocation_pvt_SIZE % __BIGGEST_ALIGNMENT__));
+#if defined(win32)
+#pragma GCC diagnostic pop
+#endif
 
 /** Singly linked list of allocators. */
 struct Allocator_List;
