@@ -15,9 +15,9 @@
 #ifndef Pipe_H
 #define Pipe_H
 
+#include "memory/Allocator.h"
 #include "exception/Except.h"
 #include "interface/Iface.h"
-#include "memory/Allocator.h"
 #include "util/events/EventBase.h"
 #include "util/log/Log.h"
 #include "util/Linker.h"
@@ -35,10 +35,19 @@ struct Pipe
     /** The name of the file eg: "/tmp/cjdns_pipe_foo" */
     const char* const fullName;
 
+    /** Pointer to platform specific file desc or handle */
+    void* fd;
+
     void* userData;
+
+    struct EventBase* const base;
 
     Pipe_callback onConnection;
     Pipe_callback onClose;
+
+    /** the name as provided by the user eg: "foo" */
+    const char* const name;
+    struct Log* logger;
 };
 
 #define Pipe_PADDING_AMOUNT 512
@@ -60,13 +69,28 @@ struct Pipe
     #endif
 #endif
 
+
+struct Pipe* Pipe_named(const char* path,
+                        const char* name,
+                        struct EventBase* eb,
+                        struct Except* eh,
+                        struct Allocator* userAlloc);
+
+struct Pipe* Pipe_namedConnect(const char* fullPath,
+                               bool attemptToCreate,
+                               struct EventBase* eb,
+                               struct Except* eh,
+                               struct Allocator* userAlloc);
+
+struct Pipe* Pipe_forFiles(int inFd,
+                           int outFd,
+                           struct EventBase* eb,
+                           struct Except* eh,
+                           struct Log* logger,
+                           struct Allocator* userAlloc);
+
 Er_DEFUN(struct Pipe* Pipe_forFd(int fd,
                         bool ipc,
-                        struct EventBase* eb,
-                        struct Log* log,
-                        struct Allocator* userAlloc));
-
-Er_DEFUN(struct Pipe* Pipe_named(const char* fullPath,
                         struct EventBase* eb,
                         struct Log* log,
                         struct Allocator* userAlloc));

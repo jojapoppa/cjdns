@@ -13,13 +13,20 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#if defined(win32)
+#include "util/crypto.h"
+#endif
+
 #include "crypto/Key.h"
 #include "crypto/random/Random.h"
 #include "util/Base32.h"
 #include "crypto/AddressCalc.h"
 
+#if !defined(win32)
 #include "crypto_scalarmult_curve25519.h"
+#endif
 
+#include <stdio.h>
 #include <stddef.h>
 
 int Key_gen(uint8_t addressOut[16],

@@ -19,6 +19,7 @@
 #include "memory/BufferAllocator.h"
 #include "util/platform/netdev/NetDev.h"
 #include "util/platform/netdev/NetPlatform.h"
+#include <stdio.h>
 
 static Er_DEFUN(void checkAddressAndPrefix(struct Sockaddr* sa,
                                   int* addrFam,

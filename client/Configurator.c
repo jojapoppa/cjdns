@@ -27,6 +27,7 @@
 #include "util/Defined.h"
 #include "util/events/Timeout.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 

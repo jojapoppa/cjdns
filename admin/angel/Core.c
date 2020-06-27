@@ -465,6 +465,11 @@ int Core_main(int argc, char** argv)
 
     struct Allocator* tempAlloc = Allocator_child(alloc);
     // Not using tempalloc because we're going to keep this pipe around for admin
+
+
+    printf("creating pipe server with: %s\n", argv[2]);
+
+
     struct PipeServer* clientPipe = PipeServer_named(argv[2], eventBase, eh, logger, alloc);
     Log_debug(logger, "Getting pre-configuration from client");
     struct Message* preConf =

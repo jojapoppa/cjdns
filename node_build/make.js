@@ -319,8 +319,9 @@ Builder.configure({
         if (builder.config.systemName === 'win32' || builder.config.systemName === 'win64') {
             builder.config.libs.push(
                 '-lws2_32',
-                '-lpsapi',   // GetProcessMemoryInfo()
-                '-liphlpapi' // GetAdapterAddresses()
+                '-lpsapi',    // GetProcessMemoryInfo()
+                '-liphlpapi', // GetAdapterAddresses()
+                '-limagehlp'
             );
         } else if (builder.config.systemName === 'linux' && !android) {
             builder.config.libs.push('-lrt'); // clock_gettime()
@@ -413,6 +414,11 @@ Builder.configure({
                 if (!(/darwin|win32|win64/i.test(builder.config.systemName))) {
                     cflags.push('-fPIC');
                 }
+
+                //TODO: need to test DEBUG flag...
+                cflags.push('-g');
+                cflags.push('-ggdb');
+
                 args.push('CFLAGS=' + cflags.join(' '));
 
                 var makeCommand = ['freebsd', 'openbsd', 'netbsd'].indexOf(builder.config.systemName) >= 0 ? 'gmake' : 'make';

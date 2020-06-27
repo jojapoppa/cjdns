@@ -20,7 +20,7 @@
 #include "memory/Allocator.h"
 #include "util/Linker.h"
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(win32)
 #include <sys/syscall.h>
 
 #if defined(__OPENBSD__)
@@ -38,6 +38,6 @@
     struct RandomSeed* GetEntropyRandomSeed_new(struct Allocator* alloc);
     RandomSeedProvider_register(GetEntropyRandomSeed_new)
 #endif
+#endif
 
-#endif
-#endif
+#endif //GetEntropyRandomSeed_H

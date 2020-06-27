@@ -16,7 +16,6 @@
 #define SystemRandomSeed_H
 
 #include "crypto/random/seed/RandomSeed.h"
-#include "crypto/random/seed/SystemRandomSeed.h"
 #include "util/Linker.h"
 Linker_require("crypto/random/seed/SystemRandomSeed.c");
 
@@ -29,4 +28,4 @@ struct RandomSeed* SystemRandomSeed_new(RandomSeed_Provider* additionalProviders
                                         struct Log* logger,
                                         struct Allocator* alloc);
 
-#endif
+#endif // SystemRandomSeed_H

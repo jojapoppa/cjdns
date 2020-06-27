@@ -14,16 +14,34 @@
  */
 #include "interface/tuntap/SocketInterface.h"
 #include "exception/Er.h"
+#include "exception/Jmp.h"
 #include "memory/Allocator.h"
 #include "util/events/EventBase.h"
 #include "util/events/Pipe.h"
+#include "crypto/random/Random.h"
+#include "util/CString.h"
+#include "benc/String.h"
 
 Er_DEFUN(struct Iface* SocketInterface_new(const char* socketFullPath,
                                     struct EventBase* base,
                                     struct Log* logger,
                                     struct Allocator* alloc))
 {
-    Log_info(logger, "Initializing socket: %s;", socketFullPath);
-    struct Pipe* p = Er(Pipe_named(socketFullPath, base, logger, alloc));
+    Log_info(logger, "Initializing socket: %s\n", socketFullPath);
+
+    struct Random* rand = Random_new(alloc, logger, NULL);
+    char randName[32] = {0};
+    Random_base32(rand, (uint8_t*)randName, 31);
+    String* name = String_printf(alloc, "cjdns-sock-%s", randName);
+
+    struct Pipe* p;
+    struct Jmp jmp;
+    Jmp_try(jmp) {
+        p = Pipe_named(socketFullPath, name->bytes, base, &jmp.handler, alloc);
+    } Jmp_catch {
+        String* error = String_printf(alloc, "Failed to configure socket [%s]", jmp.message);
+        Log_info(logger, "issue in Pipe_named: %s\n", error->bytes);
+    }
+
     Er_ret(&p->iface);
 }

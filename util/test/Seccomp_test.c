@@ -78,13 +78,16 @@ static void timeout2(void* vNULL)
     Assert_true(!"time out 2");
 }
 
-static int child(char* pipeName, struct Allocator* alloc, struct Log* logger)
+static int child(char* pipeName, struct Allocator* alloc, struct Log* logger, char* path)
 {
     struct ChildCtx* ctx = Allocator_calloc(alloc, sizeof(struct ChildCtx), 1);
     ctx->base = EventBase_new(alloc);
     ctx->alloc = alloc;
     ctx->log = logger;
-    ctx->pipe = Er_assert(Pipe_named(pipeName, ctx->base, logger, alloc));
+
+    //ctx->pipe = Er_assert(Pipe_named(pipeName, ctx->base, logger, alloc));
+    ctx->pipe = Pipe_named(path, pipeName, ctx->base, NULL, alloc);
+
     ctx->pipe->onConnection = onConnectionChild;
     ctx->pipe->userData = ctx;
     Identity_set(ctx);
@@ -110,12 +113,14 @@ int main(int argc, char** argv)
     struct Allocator* alloc = MallocAllocator_new(20000);
     struct Log* logger = FileWriterLog_new(stdout, alloc);
 
+    char* path = Process_getPath(alloc);
+
     if (!Seccomp_exists()) {
         Log_debug(logger, "Seccomp not supported on this system");
         return 0;
     }
     if (argc > 3 && !CString_strcmp("Seccomp_test", argv[1]) && !CString_strcmp("child", argv[2])) {
-        child(argv[3], alloc, logger);
+        child(argv[3], alloc, logger, path);
         Allocator_free(alloc);
         return 0;
     }
@@ -135,7 +140,6 @@ int main(int argc, char** argv)
     struct PipeServer* pipe = PipeServer_named(name->bytes, eb, NULL, logger, alloc);
     Iface_plumb(&ctx->iface, &pipe->iface.iface);
 
-    char* path = Process_getPath(alloc);
     char* args[] = { "Seccomp_test", "child", name->bytes, NULL };
 
     Assert_true(!Process_spawn(path, args, eb, alloc, NULL));

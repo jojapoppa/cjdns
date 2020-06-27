@@ -12,6 +12,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#if defined(win32)
+#include "util/crypto.h"
+#endif
+
+#include <stdio.h>
 #include "crypto/CryptoAuth_pvt.h"
 #include "crypto/AddressCalc.h"
 #include "crypto/ReplayProtector.h"
@@ -32,9 +38,11 @@
 #include "wire/Headers.h"
 #include "wire/Message.h"
 
+#if !defined(win32)
 #include "crypto_box_curve25519xsalsa20poly1305.h"
 #include "crypto_hash_sha256.h"
 #include "crypto_scalarmult_curve25519.h"
+#endif
 
 #include <stdint.h>
 #include <stdbool.h>

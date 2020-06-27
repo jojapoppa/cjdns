@@ -139,6 +139,8 @@ static void pipeOnClose(struct Pipe* p, int status)
 
 static void listenCallback(uv_stream_t* server, int status)
 {
+printf("in listenCallback...........\n");
+
     uv_pipe_t* pServer = (uv_pipe_t*) server;
     struct PipeServer_pvt* psp = Identity_containerOf(pServer, struct PipeServer_pvt, server);
     if (status == -1) {
@@ -198,6 +200,8 @@ static struct PipeServer_pvt* newPipeAny(struct EventBase* eb,
     struct EventBase_pvt* ctx = EventBase_privatize(eb);
     struct Allocator* alloc = Allocator_child(userAlloc);
 
+printf("newPipeAny with: %s\n", fullPath);
+
     struct PipeServer_pvt* psp = Allocator_clone(alloc, (&(struct PipeServer_pvt) {
         .pub = {
             .iface = {
@@ -238,15 +242,23 @@ struct PipeServer* PipeServer_named(const char* fullPath,
 {
     struct PipeServer_pvt* out = newPipeAny(eb, fullPath, eh, log, userAlloc);
 
+printf("bind to pipe: %s\n", out->pub.fullName);
+
     int ret = uv_pipe_bind(&out->server, out->pub.fullName);
     if (ret) {
         Except_throw(eh, "uv_pipe_bind() failed [%s] for pipe [%s]",
             uv_strerror(ret), out->pub.fullName);
     }
+
+printf("listen now...\n");
+
     ret = uv_listen((uv_stream_t*) &out->server, 1, listenCallback);
     if (ret) {
         Except_throw(eh, "uv_listen() failed [%s] for pipe [%s]",
                         uv_strerror(ret), out->pub.fullName);
     }
+
+printf("completed\n");
+
     return &out->pub;
 }

@@ -125,9 +125,10 @@ static Iface_DEFUN receiveMessageChild(struct Message* msg, struct Iface* iface)
     return NULL;
 }
 
-static void child(char* name, struct Context* ctx)
+static void child(char* name, struct Context* ctx, char *path)
 {
-    struct Pipe* pipe = Er_assert(Pipe_named(name, ctx->base, ctx->log, ctx->alloc));
+    struct Pipe* pipe = Pipe_named(path, name, ctx->base, NULL, ctx->alloc);
+
     pipe->onConnection = onConnectionChild;
     pipe->userData = ctx;
     ctx->iface.send = receiveMessageChild;
@@ -149,8 +150,11 @@ int main(int argc, char** argv)
     ctx->log = log;
     ctx->iface.send = receiveMessageParent;
 
+    char* path = Process_getPath(alloc);
+    Assert_true(path != NULL);
+
     if (argc > 3 && !CString_strcmp("Process_test", argv[1]) && !CString_strcmp("child", argv[2])) {
-        child(argv[3], ctx);
+        child(argv[3], ctx, path);
         return 0;
     }
 
@@ -173,9 +177,6 @@ int main(int argc, char** argv)
     pipe->onConnection = onConnectionParent;
     Iface_plumb(&ctx->iface, &pipe->iface.iface);
 
-    char* path = Process_getPath(alloc);
-
-    Assert_true(path != NULL);
     #ifdef win32
         Assert_true(CString_strstr(path, ":\\") == path + 1); /* C:\ */
         Assert_true(CString_strstr(path, ".exe"));

@@ -64,6 +64,15 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <signal.h>
+
+#if defined(win32)
+#include <windows.h>
+#include <windef.h>
+#include <dbghelp.h>
+#include <debugapi.h>
+#include <imagehlp.h>
+#endif
 
 #define DEFAULT_TUN_DEV "tun0"
 
@@ -540,8 +549,78 @@ static void checkRunningInstance(struct Allocator* allocator,
     Allocator_free(alloc);
 }
 
+/* This section of code is needed so that Windows 64 can dump the stack properly
+   from a MingGW cross compiled program.  This is pretty much the only way...
+*/
+static char const * cjdroute2_global_program_name;
+#if defined(win64)
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+#pragma GCC diagnostic ignored "-Wunused-function"
+static char const * cjdroute2_global_program_name;
+int cjdroute2_addr2line(char const * const program_name, void const * const addr);
+int cjdroute2_addr2line(char const * const program_name, void const * const addr)
+{
+  char addr2line_cmd[512] = {0};
+  /* have addr2line map the address to the relent line in the code */
+  #ifdef __APPLE__
+    /* apple does things differently... */
+    sprintf(addr2line_cmd,"atos -o %.256s %p", program_name, addr);
+  #else
+    sprintf(addr2line_cmd,"addr2line -f -p -e %.256s %p", program_name, addr);
+  #endif
+  return system(addr2line_cmd);
+}
+void cjdroute2_windows_print_stacktrace(CONTEXT* context);
+void cjdroute2_windows_print_stacktrace(CONTEXT* context)
+{
+  SymInitialize(GetCurrentProcess(), 0, true);
+  STACKFRAME frame = { 0 };
+  /* setup initial stack frame */
+  frame.AddrPC.Offset         = context->Rip;
+  frame.AddrPC.Mode           = AddrModeFlat;
+  frame.AddrStack.Offset      = context->Rsp;
+  frame.AddrStack.Mode        = AddrModeFlat;
+  frame.AddrFrame.Offset      = context->Rbp;
+  frame.AddrFrame.Mode        = AddrModeFlat;
+  while (StackWalk(IMAGE_FILE_MACHINE_AMD64 ,
+                   GetCurrentProcess(),
+                   GetCurrentThread(),
+                   &frame,
+                   context,
+                   0,
+                   SymFunctionTableAccess,
+                   SymGetModuleBase,
+                   0 ) )
+  {
+    cjdroute2_addr2line(cjdroute2_global_program_name, (void*)frame.AddrPC.Offset);
+  }
+  SymCleanup( GetCurrentProcess() );
+}
+uintptr_t __stack_chk_guard = 0xdeadbeefa55a857;
+void __stack_chk_fail(void); // CHECKFILES_IGNORE
+void __stack_chk_fail(void)  // CHECKFILES_IGNORE
+{
+#if DEBUG
+    fprintf(stderr, "cjdroute2.c:__stack_chk_guard   Stack smashed'\n");
+
+    CONTEXT context;
+    RtlCaptureContext(&context);
+    cjdroute2_windows_print_stacktrace(&context);
+    abort();
+#endif
+}
+#pragma GCC pop_options
+#endif
+
 static void onCoreExit(int64_t exit_status, int term_signal)
 {
+#if DEBUG
+    fprintf(stderr,"Core exited with status [%d], signal [%d]\n", (int)exit_status, term_signal);
+    fprintf(stderr,"  onCoreExit: (to get a call stack in gdb use 'b abort' & 'bt'\n)");
+    abort();
+#endif
+
     Assert_failure("Core exited with status [%d], signal [%d]\n", (int)exit_status, term_signal);
 }
 
@@ -598,6 +677,9 @@ static String* getPipePath(Dict* config, struct Allocator* alloc)
 
 int main(int argc, char** argv)
 {
+    FILE *fd = stdin; // overridden if filename passed in below...
+    cjdroute2_global_program_name = argv[0];
+
     #ifdef Log_KEYS
         fprintf(stderr, "Log_LEVEL = KEYS, EXPECT TO SEE PRIVATE KEYS IN YOUR LOGS!\n");
     #endif
@@ -622,6 +704,12 @@ int main(int argc, char** argv)
             return genconf(allocator, rand, 0, 1);
         } else if (CString_strcmp(argv[1], "--genconf") == 0) {
             return genconf(allocator, rand, 0, 0);
+        } else if (CString_strcmp(argv[1], "--pidfile") == 0) {
+            // deprecated
+            fprintf(stderr, "'--pidfile' option is deprecated.\n");
+            return 0;
+        } else if (CString_strcmp(argv[1], "--reconf") == 0) {
+            // Performed after reading the configuration
         } else if (CString_strcmp(argv[1], "--bench") == 0) {
             Benchmark_runAll();
             return 0;
@@ -645,6 +733,15 @@ int main(int argc, char** argv)
         // because of '--pidfile $filename'?
         if (CString_strcmp(argv[1], "--pidfile") == 0) {
             fprintf(stderr, "\n'--pidfile' option is deprecated.\n");
+            return -1;
+        } else if (CString_strcmp(argv[1], "--infile") == 0) {
+            // needed to support file loading from within gdb on w64
+            printf("reading from input file: %s\n", argv[2]);
+            fd=fopen(argv[2],"r");
+            if (fd == NULL) {
+              fprintf(stderr, "Input file not found: %s", argv[1]);
+              return -1;
+            }
         } else if (CString_strcmp(argv[1], "--genconf") == 0 ||
             CString_strcmp(argv[1], "--genconf-seed") == 0)
         {
@@ -662,11 +759,11 @@ int main(int argc, char** argv)
         } else {
             fprintf(stderr, "%s: too many arguments [%s]\n", argv[0], argv[1]);
             fprintf(stderr, "Try `%s --help' for more information.\n", argv[0]);
+            return -1;
         }
-        return -1;
     }
 
-    if (isatty(STDIN_FILENO)) {
+    if (isatty(STDIN_FILENO) && (CString_strcmp(argv[1], "--infile") != 0)) {
         // We were started from a terminal
         // The chances an user wants to type in a configuration
         // bij hand are pretty slim so we show him the usage
@@ -679,7 +776,7 @@ int main(int argc, char** argv)
     // First try reading the conf with the new parser, then try the old parser
     // and if the old parser fails or the parsed content contains "version": 2,
     // fail to launch
-    struct Message* confMsg = readToMsg(stdin, allocator);
+    struct Message* confMsg = readToMsg(fd, allocator);
     struct Reader* confReader = ArrayReader_new(confMsg->bytes, confMsg->length, allocator);
     Dict _config;
     Dict* config = &_config;
@@ -793,8 +890,10 @@ int main(int argc, char** argv)
     }
 
     // --------------------- Connect to socket ------------------------- //
-    struct Pipe* corePipe =
-        Except_er(eh, Pipe_named(pipePath->bytes, eventBase, logger, allocator));
+    char corePipeName[64] = "cjdcli-core-";
+    Random_base32(rand, (uint8_t*)corePipeName+CString_strlen(corePipeName), 31);
+    struct Pipe* corePipe = Pipe_named(pipePath->bytes, corePipeName, eventBase,
+        eh, allocator);
 
     // --------------------- Pre-Configure Core ------------------------- //
     Dict* preConf = Dict_new(allocator);
